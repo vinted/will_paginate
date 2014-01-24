@@ -1,15 +1,13 @@
 class Project < ActiveRecord::Base
-  has_and_belongs_to_many :developers, :uniq => true, :join_table => 'developers_projects'
-  
+  has_and_belongs_to_many :developers, lambda { uniq }, :join_table => 'developers_projects'
+
   has_many :topics
-    # :finder_sql  => 'SELECT * FROM topics WHERE (topics.project_id = #{id})',
-    # :counter_sql => 'SELECT COUNT(*) FROM topics WHERE (topics.project_id = #{id})'
-  
+
   has_many :replies, :through => :topics do
     def only_recent(params = {})
-      scoped.where(['replies.created_at > ?', 15.minutes.ago])
+      where(['replies.created_at > ?', 15.minutes.ago]).references(:replies)
     end
   end
 
-  has_many :unique_replies, :through => :topics, :source => :replies, :uniq => true
+  has_many :unique_replies, lambda { uniq }, :through => :topics, :source => :replies
 end
