@@ -6,22 +6,22 @@ ActiverecordTestConnector.setup
 abort unless ActiverecordTestConnector.able_to_connect
 
 describe WillPaginate::ActiveRecord do
-  
+
   extend ActiverecordTestConnector::FixtureSetup
-  
+
   fixtures :topics, :replies, :users, :projects, :developers_projects
-  
+
   it "should integrate with ActiveRecord::Base" do
     ActiveRecord::Base.should respond_to(:paginate)
   end
-  
+
   it "should paginate" do
     lambda {
       users = User.paginate(:page => 1, :per_page => 5).to_a
       users.length.should == 5
     }.should run_queries(2)
   end
-  
+
   it "should fail when encountering unknown params" do
     lambda {
       User.paginate :foo => 'bar', :page => 1, :per_page => 4
@@ -105,8 +105,8 @@ describe WillPaginate::ActiveRecord do
       rel.page(3).last.should == users(:poor_jamis)
     end
 
-    it "keeps pagination data after 'scoped'" do
-      rel = Developer.page(2).scoped
+    it "keeps pagination data after 'all'" do
+      rel = Developer.page(2).all
       rel.per_page.should == 10
       rel.offset.should == 10
       rel.current_page.should == 2
@@ -151,7 +151,7 @@ describe WillPaginate::ActiveRecord do
         topics.should_not be_empty
       }.should run_queries(1)
     end
-    
+
     it "support empty? for grouped queries" do
       topics = Topic.group(:project_id).paginate :page => 1, :per_page => 3
       lambda {
@@ -200,7 +200,7 @@ describe WillPaginate::ActiveRecord do
     it "should count with group" do
       Developer.group(:salary).page(1).total_entries.should == 4
     end
-    
+
     it "should count with select" do
       Topic.select('title, content').page(1).total_entries.should == 4
     end
@@ -214,7 +214,7 @@ describe WillPaginate::ActiveRecord do
       Developer.where("1 = 2").page(1).total_pages.should == 1
     end
   end
-  
+
   it "should not ignore :select parameter when it says DISTINCT" do
     users = User.select('DISTINCT salary').paginate :page => 2
     users.total_entries.should == 5
@@ -272,11 +272,11 @@ describe WillPaginate::ActiveRecord do
     options = { :page => 1 }
     options.expects(:delete).never
     options_before = options.dup
-    
+
     Topic.paginate(options)
     options.should == options_before
   end
-  
+
   it "should get first page of Topics with a single query" do
     lambda {
       result = Topic.paginate :page => nil
@@ -286,7 +286,7 @@ describe WillPaginate::ActiveRecord do
       result.size.should == 4
     }.should run_queries(1)
   end
-  
+
   it "should get second (inexistent) page of Topics, requiring 2 queries" do
     lambda {
       result = Topic.paginate :page => 2
@@ -294,13 +294,13 @@ describe WillPaginate::ActiveRecord do
       result.should be_empty
     }.should run_queries(2)
   end
-  
+
   it "should paginate with :order" do
     result = Topic.paginate :page => 1, :order => 'created_at DESC'
     result.should == topics(:futurama, :harvey_birdman, :rails, :ar).reverse
     result.total_pages.should == 1
   end
-  
+
   it "should paginate with :conditions" do
     result = Topic.paginate :page => 1, :order => 'id ASC',
       :conditions => ["created_at > ?", 30.minutes.ago]
@@ -313,15 +313,13 @@ describe WillPaginate::ActiveRecord do
     klass = klass.references(:replies) if klass.respond_to?(:references)
 
     result = klass.paginate \
-      :page     => 1, 
-      :include  => :replies,  
-      :conditions => "replies.content LIKE 'Bird%' ", 
+      :page     => 1,
+      :include  => :replies,
+      :conditions => "replies.content LIKE 'Bird%' ",
       :per_page => 10
 
-    expected = klass.find :all,
-      :include => 'replies', 
-      :conditions => "replies.content LIKE 'Bird%' ", 
-      :limit   => 10
+    expected = klass.includes(:replies).where("replies.content LIKE 'Bird%'")
+      .limit(10).to_a
 
     result.should == expected
     result.total_entries.should == 1
@@ -334,15 +332,14 @@ describe WillPaginate::ActiveRecord do
         :order => 'replies.created_at asc, topics.created_at asc').to_a
     }.should run_queries(2)
 
-    expected = Topic.find :all, 
-      :include => 'replies', 
-      :order   => 'replies.created_at asc, topics.created_at asc', 
-      :limit   => 10
+    expected = Topic.all.includes(:replies)
+      .order('replies.created_at asc, topics.created_at asc')
+      .limit(10)
 
     result.should == expected
     result.total_entries.should == 4
   end
-  
+
   describe "associations" do
     it "should paginate with include" do
       project = projects(:active_record)
@@ -351,18 +348,17 @@ describe WillPaginate::ActiveRecord do
       topics = topics.references(:replies) if topics.respond_to?(:references)
 
       result = topics.paginate \
-        :page       => 1, 
-        :include    => :replies,  
+        :page       => 1,
+        :include    => :replies,
         :conditions => ["replies.content LIKE ?", 'Nice%'],
         :per_page   => 10
 
       topics = Topic
       topics = topics.references(:replies) if topics.respond_to?(:references)
 
-      expected = topics.find :all,
-        :include    => 'replies', 
-        :conditions => ["project_id = ? AND replies.content LIKE ?", project.id, 'Nice%'],
-        :limit      => 10
+      expected = topics.includes(:replies)
+        .where("project_id = ? AND replies.content LIKE ?", project.id, 'Nice%')
+        .limit(10).to_a
 
       result.should == expected
     end
@@ -387,9 +383,9 @@ describe WillPaginate::ActiveRecord do
       result.total_entries.should == 2
 
       lambda {
-        dhh.projects.find(:all, :order => 'projects.id', :limit => 4)
+        dhh.projects.order('projects.id').limit(4)
       }.should_not raise_error
-      
+
       result = dhh.projects.paginate(:page => 1, :per_page => 4).reorder('projects.id')
       result.should == expected_id_ordered
 
@@ -411,7 +407,7 @@ describe WillPaginate::ActiveRecord do
       }.should run_queries(1)
     end
   end
-  
+
   it "should paginate with joins" do
     result = nil
     join_sql = 'LEFT JOIN developers_projects ON users.id = developers_projects.developer_id'
@@ -501,7 +497,7 @@ describe WillPaginate::ActiveRecord do
       Developer.paginate :readonly => true, :page => 1
     }.should_not raise_error
   end
-  
+
   it "should not paginate an array of IDs" do
     lambda {
       Developer.paginate((1..8).to_a, :per_page => 3, :page => 2, :order => 'id')

@@ -10,10 +10,10 @@ end
 
 module WillPaginate
   # = Paginating finders for ActiveRecord models
-  # 
+  #
   # WillPaginate adds +paginate+, +per_page+ and other methods to
   # ActiveRecord::Base class methods and associations.
-  # 
+  #
   # In short, paginating finders are equivalent to ActiveRecord finders; the
   # only difference is that we start with "paginate" instead of "find" and
   # that <tt>:page</tt> is required parameter:
@@ -127,6 +127,10 @@ module WillPaginate
         copy_will_paginate_data super
       end
 
+      def all(options = nil)
+        copy_will_paginate_data super
+      end
+
       def to_a
         if current_page.nil? then super # workaround for Active Record 3.0
         else
@@ -198,7 +202,7 @@ module WillPaginate
       # +per_page+.
       #
       # Example:
-      # 
+      #
       #   @developers = Developer.paginate_by_sql ['select * from developers where salary > ?', 80000],
       #                          :page => params[:page], :per_page => 3
       #
@@ -206,7 +210,7 @@ module WillPaginate
       # supply <tt>:total_entries</tt>. If you experience problems with this
       # generated SQL, you might want to perform the count manually in your
       # application.
-      # 
+      #
       def paginate_by_sql(sql, options)
         pagenum  = options.fetch(:page) { raise ArgumentError, ":page parameter required" } || 1
         per_page = options[:per_page] || self.per_page

@@ -3,6 +3,6 @@ class Topic < ActiveRecord::Base
   belongs_to :project
 
   scope :mentions_activerecord, lambda {
-    where(['topics.title LIKE ?', '%ActiveRecord%'])
+    where(['topics.title LIKE ?', '%ActiveRecord%']).references(:topics)
   }
 end
