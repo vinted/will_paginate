@@ -22,6 +22,12 @@ describe WillPaginate::ActiveRecord do
     }.should run_queries(2)
   end
 
+  it "should extra fetch" do
+    users = User.paginate(:page => 2, :per_page => 2, :extra_fetch => 1)
+    users.size.should == 3
+    users.to_a.length.should == 3
+  end
+
   it "should fail when encountering unknown params" do
     lambda {
       User.paginate :foo => 'bar', :page => 1, :per_page => 4
@@ -40,6 +46,35 @@ describe WillPaginate::ActiveRecord do
       lambda {
         rel.total_pages.should == 2
       }.should run_queries(1)
+    end
+
+    describe "extra fetch" do
+      it "supports page, per page then extra fetch" do
+        rel = Developer.order('id').page(2).per_page(2).extra_fetch(1)
+        rel.total_entries.should == 11
+        rel.length.should == 3
+        rel.count.should == 3
+        rel.size.should == 3
+        rel.to_a.size.should == 3
+      end
+
+      it "supports page, extra fetch then per page" do
+        rel = Developer.order('id').page(2).extra_fetch(1).per_page(2)
+        rel.total_entries.should == 11
+        rel.length.should == 3
+        rel.count.should == 3
+        rel.size.should == 3
+        rel.to_a.size.should == 3
+      end
+
+      it "supports limit, page then extra fetch" do
+        rel = Developer.order('id').limit(2).page(2).extra_fetch(1)
+        rel.total_entries.should == 11
+        rel.length.should == 3
+        rel.count.should == 3
+        rel.size.should == 3
+        rel.to_a.size.should == 3
+      end
     end
 
     it "should keep per-class per_page number" do
