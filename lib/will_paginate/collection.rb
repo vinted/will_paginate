@@ -42,7 +42,7 @@ module WillPaginate
   #
   # WillPaginate::Collection also assists in rolling out your own pagination
   # solutions: see +create+.
-  # 
+  #
   # If you are writing a library that provides a collection which you would like
   # to conform to this API, you don't have to copy these methods over; simply
   # make your plugin/gem dependant on this library and do:
@@ -52,16 +52,17 @@ module WillPaginate
   class Collection < Array
     include CollectionMethods
 
-    attr_reader :current_page, :per_page, :total_entries
+    attr_reader :current_page, :per_page, :total_entries, :extra_fetch
 
     # Arguments to the constructor are the current page number, per-page limit
     # and the total number of entries. The last argument is optional because it
     # is best to do lazy counting; in other words, count *conditionally* after
     # populating the collection using the +replace+ method.
-    def initialize(page, per_page = WillPaginate.per_page, total = nil)
+    def initialize(page, per_page = WillPaginate.per_page, total = nil, extra_fetch = 0)
       @current_page = WillPaginate::PageNumber(page)
       @per_page = per_page.to_i
       self.total_entries = total if total
+      @extra_fetch = extra_fetch || 0
     end
 
     # Just like +new+, but yields the object after instantiation and returns it
@@ -91,8 +92,8 @@ module WillPaginate
     #
     # The Array#paginate API has since then changed, but this still serves as a
     # fine example of WillPaginate::Collection usage.
-    def self.create(page, per_page, total = nil)
-      pager = new(page, per_page, total)
+    def self.create(page, per_page, total = nil, extra_fetch = 0)
+      pager = new(page, per_page, total, extra_fetch)
       yield pager
       pager
     end
@@ -123,7 +124,7 @@ module WillPaginate
     # in +create+.
     def replace(array)
       result = super
-      
+
       # The collection is shorter then page limit? Rejoice, because
       # then we know that we are on the last page!
       if total_entries.nil? and length < per_page and (current_page == 1 or length > 0)

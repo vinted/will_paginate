@@ -25,7 +25,7 @@ module WillPaginate
     module RelationMethods
       include WillPaginate::CollectionMethods
 
-      attr_accessor :current_page
+      attr_accessor :current_page, :extra
       attr_writer :total_entries, :wp_count_options
 
       def per_page(value = nil)
@@ -38,10 +38,18 @@ module WillPaginate
       def limit(num)
         rel = super
         if rel.current_page
-          rel.offset rel.current_page.to_offset(rel.limit_value).to_i
+          rel = rel.offset(rel.current_page.to_offset(rel.limit_value - self.extra.to_i).to_i)
+          rel.limit_value += self.extra.to_i if self.extra
+          rel
         else
           rel
         end
+      end
+
+      def extra_fetch(value)
+        self.extra = value
+        self.limit_value += self.extra.to_i if self.extra
+        self
       end
 
       # dirty hack to enable `first` after `limit` behavior above
@@ -76,25 +84,25 @@ module WillPaginate
             offset_value + size
           else
             @total_entries_queried = true
-            result = count
+            result = wp_count
             result = result.size if result.respond_to?(:size) and !result.is_a?(Integer)
             result
           end
         end
       end
 
-      def count(*args)
+      def wp_count(*args)
         if limit_value
           excluded = [:order, :limit, :offset, :reorder]
           excluded << :includes unless eager_loading?
           rel = self.except(*excluded)
           # TODO: hack. decide whether to keep
           rel = rel.apply_finder_options(@wp_count_options) if defined? @wp_count_options
-          
+
           column_name = (select_for_count(rel) || :all)
           rel.count(column_name)
         else
-          super(*args)
+          count(*args)
         end
       end
 
@@ -134,7 +142,7 @@ module WillPaginate
       def to_a
         if current_page.nil? then super # workaround for Active Record 3.0
         else
-          ::WillPaginate::Collection.create(current_page, limit_value) do |col|
+          ::WillPaginate::Collection.create(current_page, limit_value - extra.to_i, nil, extra) do |col|
             col.replace super
             col.total_entries ||= total_entries
           end
@@ -149,7 +157,7 @@ module WillPaginate
         other.wp_count_options = @wp_count_options if defined? @wp_count_options
         other
       end
-      
+
       def select_for_count(rel)
         if rel.select_values.present?
           select = rel.select_values.join(", ")
@@ -164,11 +172,12 @@ module WillPaginate
         pagenum  = options.fetch(:page) { raise ArgumentError, ":page parameter required" }
         per_page = options.delete(:per_page) || self.per_page
         total    = options.delete(:total_entries)
+        extra    = options.delete(:extra_fetch) || 0
 
         count_options = options.delete(:count)
         options.delete(:page)
 
-        rel = limit(per_page.to_i).page(pagenum)
+        rel = limit(per_page.to_i).page(pagenum).extra_fetch(extra.to_i)
         rel = rel.apply_finder_options(options) if options.any?
         rel.wp_count_options = count_options    if count_options
         rel.total_entries = total.to_i          unless total.blank?
@@ -189,7 +198,8 @@ module WillPaginate
         rel = rel.extending(RelationMethods)
         pagenum = ::WillPaginate::PageNumber(num.nil? ? 1 : num)
         per_page = rel.limit_value || self.per_page
-        rel = rel.offset(pagenum.to_offset(per_page).to_i)
+        per_page_with_extra = per_page - rel.extra.to_i
+        rel = rel.offset(pagenum.to_offset(per_page_with_extra).to_i)
         rel = rel.limit(per_page) unless rel.limit_value
         rel.current_page = pagenum
         rel
@@ -226,11 +236,11 @@ module WillPaginate
             query = <<-SQL
               SELECT * FROM (
                 SELECT rownum rnum, a.* FROM (#{query}) a
-                WHERE rownum <= #{pager.offset + pager.per_page}
+                WHERE rownum <= #{pager.offset + pager.per_page + pager.extra_fetch}
               ) WHERE rnum >= #{pager.offset}
             SQL
           else
-            query << " LIMIT #{pager.per_page} OFFSET #{pager.offset}"
+            query << " LIMIT #{pager.per_page + pager.extra_fetch} OFFSET #{pager.offset}"
           end
 
           # perfom the find

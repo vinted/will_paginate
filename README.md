@@ -1,3 +1,19 @@
+# About this fork
+
+This fork is developed by Justas Janauskas (gmail to jjanauskas), extended by Tomas Brazys. It includes one extra paging feature :extra_fetch for Active Record, which allows to fetch few more records for desired page.
+
+For example:
+
+```ruby
+  Post.paginate :page => 2, :per_page => 20, :extra_fetch => 3, :order => 'created_at DESC'
+  #or
+  Post.order('created_at DESC').page(2).per_page(20).extra_fetch(3)
+```
+
+This will return 23 records instead of 20.
+
+This was needed for manodrabuziai.lt, kleiderkleiser.de and votocvohoz.cz projects. Due to our internal data structures, we have to reprocess retrieved collection from ActiveRecord and sometimes remove few items. We use :extra_fetch feature to retrieve slightly more records per each page, then remove unnecessary and still have required :per_page number records in our pages.
+
 # will_paginate
 
 will_paginate is a pagination library that integrates with Ruby on Rails, Sinatra, Merb, DataMapper and Sequel.
