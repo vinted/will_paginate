@@ -10,6 +10,7 @@ class Array
   # * <tt>:per_page</tt> - limit of items per page, defaults to 30
   # * <tt>:total_entries</tt> - total number of items in the array, defaults to
   #   <tt>array.length</tt> (obviously)
+  # * <tt>:extra_fetch</tt> - allows to fetch few more records for desired page
   #
   # Example:
   #   arr = ['a', 'b', 'c', 'd', 'e']
@@ -25,9 +26,10 @@ class Array
     page     = options[:page] || 1
     per_page = options[:per_page] || WillPaginate.per_page
     total    = options[:total_entries] || self.length
+    extra    = options[:extra_fetch] || 0
 
-    WillPaginate::Collection.create(page, per_page, total) do |pager|
-      pager.replace self[pager.offset, pager.per_page].to_a
+    WillPaginate::Collection.create(page, per_page, total, extra) do |pager|
+      pager.replace self[pager.offset, pager.per_page + extra].to_a
     end
   end
 end
