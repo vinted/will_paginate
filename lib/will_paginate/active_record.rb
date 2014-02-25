@@ -113,7 +113,7 @@ module WillPaginate
         if !loaded? and offset_value
           result = count
           result = result.size if result.respond_to?(:size) and !result.is_a?(Integer)
-          result <= offset_value
+          result <= 0
         else
           super
         end
