@@ -194,6 +194,13 @@ describe WillPaginate::ActiveRecord do
       }.should run_queries(1)
     end
 
+    it 'empty? works correctly with page > 1' do
+      users = User.paginate(:page => 2, :per_page => 3)
+      lambda {
+        users.should_not be_empty
+      }.should run_queries(1)
+    end
+
     it "supports `size` for grouped queries" do
       topics = Topic.group(:project_id).paginate :page => 1, :per_page => 3
       lambda {
