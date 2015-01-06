@@ -8,6 +8,4 @@ class Project < ActiveRecord::Base
       where(['replies.created_at > ?', 15.minutes.ago]).references(:replies)
     end
   end
-
-  has_many :unique_replies, lambda { uniq }, :through => :topics, :source => :replies
 end
