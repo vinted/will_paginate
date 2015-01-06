@@ -99,7 +99,7 @@ module WillPaginate
           # TODO: hack. decide whether to keep
           rel = rel.apply_finder_options(@wp_count_options) if defined? @wp_count_options
 
-          column_name = (select_for_count(rel) || :all)
+          column_name = (wp_select_for_count(rel) || :all)
           rel.count(column_name)
         else
           count(*args)
@@ -158,7 +158,7 @@ module WillPaginate
         other
       end
 
-      def select_for_count(rel)
+      def wp_select_for_count(rel)
         if rel.select_values.present?
           select = rel.select_values.join(", ")
           select if select !~ /[,*]/
