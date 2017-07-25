@@ -1,18 +1,23 @@
 require 'spec_helper'
 
-begin
+if !ENV['SKIP_NONRAILS_TESTS']
+  if defined?(Rails)
+    old_rails = Rails
+    # Mongoid sees the `Rails` constant and then proceeds to `require "rails"`
+    # from its railtie. This tricks it into believing there is no Rails.
+    Object.send(:remove_const, :Rails)
+  end
   require 'will_paginate/mongoid'
-rescue LoadError => error
-  warn "Error running Sequel specs: #{error.message}"
-  mongoid_loaded = false
-else
-  Mongoid.database = Mongo::Connection.new.db('will_paginate_test')
+  Object.send(:const_set, :Rails, old_rails) if old_rails
 
+  Mongoid.connect_to 'will_paginate_test'
   class MongoidModel
     include Mongoid::Document
   end
 
   mongoid_loaded = true
+else
+  mongoid_loaded = false
 end
 
 describe WillPaginate::Mongoid do
@@ -84,7 +89,7 @@ describe WillPaginate::Mongoid do
     end
 
     it "should convert strings to integers" do
-      criteria.paginate(:page => "2", :per_page => "3").options.should include(:limit => 3, :limit => 3)
+      criteria.paginate(:page => "2", :per_page => "3").options.should include(:limit => 3)
     end
 
     describe "collection compatibility" do
@@ -119,7 +124,8 @@ describe WillPaginate::Mongoid do
         end
 
         it "should be casted to PageNumber" do
-          criteria.paginate(:page => 1).current_page.should be_instance_of(WillPaginate::PageNumber)
+          page = criteria.paginate(:page => 1).current_page
+          (page.instance_of? WillPaginate::PageNumber).should be
         end
       end
 
@@ -133,7 +139,6 @@ describe WillPaginate::Mongoid do
         %w(total_entries total_pages current_page).each do |method|
           criteria.should_not respond_to(method)
         end
-        criteria.offset.should be_nil # this is already a criteria method
       end
     end
   end
