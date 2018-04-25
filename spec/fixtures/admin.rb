@@ -1,3 +1,3 @@
 class Admin < User
-  has_many :companies, lambda { from('companies') }
+  has_many :companies
 end
