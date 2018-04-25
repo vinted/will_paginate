@@ -22,7 +22,7 @@ Installation:
 
 ``` ruby
 ## Gemfile for Rails 3+, Sinatra, and Merb
-gem 'will_paginate', '~> 3.0.6'
+gem 'will_paginate', '~> 3.1.0'
 ```
 
 See [installation instructions][install] on the wiki for more info.
@@ -74,4 +74,4 @@ Happy paginating.
 [install]: https://github.com/mislav/will_paginate/wiki/Installation "will_paginate installation"
 [group]: http://groups.google.com/group/will_paginate "will_paginate discussion and support group"
 [issues]: https://github.com/mislav/will_paginate/issues
-[css]: http://mislav.uniqpath.com/will_paginate/
+[css]: http://mislav.github.io/will_paginate/

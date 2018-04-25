@@ -4,12 +4,23 @@ require 'active_support/multibyte' # needed for Ruby 1.9.1
 require 'stringio'
 require 'erb'
 
+# https://travis-ci.org/mislav/will_paginate/jobs/99999001
+require 'active_support/core_ext/string/conversions'
+class String
+  alias to_datetime_without_patch to_datetime
+  def to_datetime
+    to_datetime_without_patch
+  rescue ArgumentError
+    return nil
+  end
+end
+
 $query_count = 0
 $query_sql = []
 
 ignore_sql = /
     ^(
-      PRAGMA | SHOW\ max_identifier_length |
+      PRAGMA | SHOW\ (max_identifier_length|search_path) |
       SELECT\ (currval|CAST|@@IDENTITY|@@ROWCOUNT) |
       SHOW\ ((FULL\ )?FIELDS|TABLES)
     )\b |
@@ -27,7 +38,6 @@ end
 module ActiverecordTestConnector
   extend self
 
-  attr_accessor :able_to_connect
   attr_accessor :connected
 
   FIXTURES_PATH = File.expand_path('../../fixtures', __FILE__)
@@ -38,18 +48,14 @@ module ActiverecordTestConnector
 
   # Set our defaults
   self.connected = false
-  self.able_to_connect = true
 
   def setup
-    unless self.connected || !self.able_to_connect
+    unless self.connected
       setup_connection
       load_schema
       add_load_path FIXTURES_PATH
       self.connected = true
     end
-  rescue Exception => e  # errors from ActiveRecord setup
-    $stderr.puts "\nSkipping ActiveRecord tests: #{e}\n\n"
-    self.able_to_connect = false
   end
 
   private

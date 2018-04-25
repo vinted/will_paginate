@@ -2,11 +2,6 @@ require 'will_paginate/per_page'
 require 'will_paginate/page_number'
 require 'will_paginate/collection'
 require 'active_record'
-begin
-  require 'active_record/deprecated_finders'
-rescue LoadError
-  # only for Rails 4.1
-end
 
 module WillPaginate
   # = Paginating finders for ActiveRecord models
@@ -64,8 +59,8 @@ module WillPaginate
       end
 
       # fix for Rails 3.0
-      def find_last
-        if !loaded? and offset_value || limit_value
+      def find_last(*args)
+        if !loaded? && args.empty? && (offset_value || limit_value)
           @last ||= to_a.last
         else
           super
@@ -154,7 +149,6 @@ module WillPaginate
       def copy_will_paginate_data(other)
         other.current_page = current_page unless other.current_page
         other.total_entries = nil if defined? @total_entries_queried
-        other.wp_count_options = @wp_count_options if defined? @wp_count_options
         other
       end
 
@@ -170,12 +164,14 @@ module WillPaginate
       def paginate(options)
         options  = options.dup
         pagenum  = options.fetch(:page) { raise ArgumentError, ":page parameter required" }
+        options.delete(:page)
         per_page = options.delete(:per_page) || self.per_page
         total    = options.delete(:total_entries)
         extra    = options.delete(:extra_fetch) || 0
 
-        count_options = options.delete(:count)
-        options.delete(:page)
+        if options.any?
+          raise ArgumentError, "unsupported parameters: %p" % options.keys
+        end
 
         rel = limit(per_page.to_i).page(pagenum).extra_fetch(extra.to_i)
         rel = rel.apply_finder_options(options) if options.any?
